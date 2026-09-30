@@ -263,6 +263,12 @@ export const buildMainStixEntities = async (
     }
   }
 
+  if (schema.autoCreateIndicatorFromObservable && isStixCyberObservable(mainEntityType)) {
+    for (let index = 0; index < mainStixEntities.length; index += 1) {
+      mainStixEntities[index].x_opencti_create_indicator = true;
+    }
+  }
+
   return { mainStixEntities, mainEntityStixId };
 };
 

@@ -503,6 +503,34 @@ describe('buildMainStixEntities', () => {
         .rejects.toThrow('Main entity observable is not correctly formatted');
     });
   });
+
+  describe('autoCreateIndicatorFromObservable', () => {
+    it.each([
+      [true, true],
+      [false, undefined],
+    ])('should set x_opencti_create_indicator for observables when option is %s', async (enabled, expected) => {
+      vi.mocked(isStixCyberObservable).mockReturnValue(true);
+      vi.mocked(checkObservableSyntax).mockReturnValue(true);
+      vi.mocked(refangValues).mockReturnValue(['1.1.1.1', '2.2.2.2']);
+
+      const schema = makeSchema({ mainEntityMultiple: true, mainEntityFieldMode: 'parsed', mainEntityParseFieldMapping: 'value', autoCreateIndicatorFromObservable: enabled });
+
+      const { mainStixEntities } = await buildMainStixEntities(context, user, schema, { mainEntityParsed: ['1.1.1.1', '2.2.2.2'] }, 'IPv4-Addr');
+
+      expect(mainStixEntities.map((entity) => entity.x_opencti_create_indicator)).toEqual([expected, expected]);
+    });
+
+    it('should not set x_opencti_create_indicator when the main entity is not an observable', async () => {
+      vi.mocked(isStixCyberObservable).mockReturnValue(false);
+
+      const schema = makeSchema({ fields: [makeField()], autoCreateIndicatorFromObservable: true });
+      const values = { name: 'Emotet' };
+
+      const { mainStixEntities } = await buildMainStixEntities(context, user, schema, values, 'Malware');
+
+      expect(mainStixEntities[0].x_opencti_create_indicator).toBeUndefined();
+    });
+  });
 });
 
 // ─── buildAdditionalEntities ──────────────────────────────────────────────────
