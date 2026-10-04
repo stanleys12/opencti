@@ -4,6 +4,7 @@ import type { AdditionalEntity, FormSchemaDefinition } from './form-types';
 import type { StoreEntity, BasicStoreEntity } from '../../types/store';
 import type { StixRelation } from '../../types/stix-2-1-sro';
 import type { StixContainer } from '../../types/stix-2-1-sdo';
+import { STIX_EXT_OCTI } from '../../types/stix-2-1-extensions';
 import { convertStoreToStix_2_1 } from '../../database/stix-2-1-converter';
 import { isStixDomainObjectContainer, ENTITY_TYPE_MALWARE } from '../../schema/stixDomainObject';
 import { isEmptyField, isNotEmptyField } from '../../database/utils';
@@ -556,6 +557,15 @@ export const wrapInContainerOrPush = (
   } else {
     for (let i = 0; i < mainStixEntities.length; i += 1) {
       bundle.objects.push(mainStixEntities[i]);
+    }
+  }
+};
+
+export const markObservablesForIndicatorCreation = (bundle: any): void => {
+  for (let i = 0; i < bundle.objects.length; i += 1) {
+    const stixObject = bundle.objects[i];
+    if (isStixCyberObservable(stixObject.extensions?.[STIX_EXT_OCTI]?.type)) {
+      stixObject.x_opencti_create_indicator = true;
     }
   }
 };

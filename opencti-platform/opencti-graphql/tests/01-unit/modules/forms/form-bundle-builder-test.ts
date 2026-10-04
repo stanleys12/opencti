@@ -9,7 +9,14 @@ import { isStixCyberObservable } from '../../../../src/schema/stixCyberObservabl
 import { checkObservableSyntax } from '../../../../src/utils/syntax';
 import { transformSpecialFields } from '../../../../src/modules/form/form-fields-converter';
 import { completeEntity } from '../../../../src/modules/form/form-entity-builder';
-import { buildAdditionalEntities, buildMainStixEntities, buildRelationships, wrapInContainerOrPush } from '../../../../src/modules/form/form-bundle-builder';
+import {
+  buildAdditionalEntities,
+  buildMainStixEntities,
+  buildRelationships,
+  markObservablesForIndicatorCreation,
+  wrapInContainerOrPush,
+} from '../../../../src/modules/form/form-bundle-builder';
+import { STIX_EXT_OCTI } from '../../../../src/types/stix-2-1-extensions';
 import { SYSTEM_USER } from '../../../../src/utils/access';
 
 vi.mock('../../../../src/modules/form/form-utils', () => ({
@@ -1171,5 +1178,31 @@ describe('wrapInContainerOrPush', () => {
 
     expect(bundle.objects).toHaveLength(1);
     expect((bundle.objects[0]).object_refs).toBeUndefined();
+  });
+});
+
+// ─── markObservablesForIndicatorCreation ──────────────────────────────────────
+
+describe('markObservablesForIndicatorCreation', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('should flag only observables for indicator creation', () => {
+    vi.mocked(isStixCyberObservable).mockImplementation((type: string) => type === 'IPv4-Addr');
+
+    const bundle = {
+      objects: [
+        { id: 'ipv4-addr--1', extensions: { [STIX_EXT_OCTI]: { type: 'IPv4-Addr' } } },
+        { id: 'ipv4-addr--2', extensions: { [STIX_EXT_OCTI]: { type: 'IPv4-Addr' } } },
+        { id: 'report--1', extensions: { [STIX_EXT_OCTI]: { type: 'Report' } } },
+        { id: 'relationship--1', type: 'relationship' },
+      ] as any[],
+    };
+
+    markObservablesForIndicatorCreation(bundle);
+
+    expect(bundle.objects[0].x_opencti_create_indicator).toBe(true);
+    expect(bundle.objects[1].x_opencti_create_indicator).toBe(true);
+    expect(bundle.objects[2].x_opencti_create_indicator).toBeUndefined();
+    expect(bundle.objects[3].x_opencti_create_indicator).toBeUndefined();
   });
 });

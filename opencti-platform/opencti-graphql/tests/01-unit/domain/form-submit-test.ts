@@ -484,4 +484,36 @@ describe('formSubmit', () => {
     const draftInput = vi.mocked(draftWorkspaceDomain.addDraftWorkspace).mock.calls[0][2] as any;
     expect(draftInput.bypassMandatoryAttributes).toBe(true);
   });
+
+  describe('automatic indicator creation', () => {
+    const submitIpv4Form = async (autoCreateIndicatorFromObservable: boolean) => {
+      mockStoreLoadById.mockResolvedValue({
+        ...mockForm,
+        form_schema: JSON.stringify({
+          fields: [
+            { name: 'value', label: 'Value', type: 'text', attributeMapping: { entity: 'main_entity', attributeName: 'value' } },
+          ],
+          mainEntityType: 'IPv4-Addr',
+          autoCreateIndicatorFromObservable,
+        }),
+      });
+      vi.spyOn(workDomain, 'updateExpectationsNumber').mockResolvedValue(undefined as any);
+      await formSubmit(mockContext, mockUser, { formId: 'form-1', values: JSON.stringify({ value: '1.2.3.4' }) }, false);
+      const message: any = vi.mocked(rabbitmq.pushBundleToWorker).mock.calls[0][3];
+      const bundle = JSON.parse(Buffer.from(message.content, 'base64').toString('utf-8'));
+      return bundle.objects.filter((o: any) => o.type === 'ipv4-addr');
+    };
+
+    it('should mark observables of the bundle when the schema enables it', async () => {
+      const observables = await submitIpv4Form(true);
+      expect(observables).toHaveLength(1);
+      expect(observables[0].x_opencti_create_indicator).toBe(true);
+    });
+
+    it('should not mark observables of the bundle when the schema disables it', async () => {
+      const observables = await submitIpv4Form(false);
+      expect(observables).toHaveLength(1);
+      expect(observables[0].x_opencti_create_indicator).toBeUndefined();
+    });
+  });
 });
